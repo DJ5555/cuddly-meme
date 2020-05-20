@@ -1,0 +1,90 @@
+---
+title: "R Notebook"
+---
+
+
+
+```{r}
+library(AER)
+data("GoldSilver")
+```
+First we check whether the data is stationary or non-stationary.
+```{r}
+
+plot(log(GoldSilver), plot.type = "single", col = c(2,4))
+legend("topleft", c("Gold", "Silver"), bty = "n", col = c(2,4), lty = rep(1,2))
+```
+
+Neither of them (gold and silver prices) is stationary because:
+i)	The trends are not flat, and 
+ii)	the variance is not constant over time.
+
+
+Next, we check for autocorrelation in the time series. 
+```{r}
+acf(coredata(log(GoldSilver[,"gold"])), ylim = c(-1, 1), lag.max=50)
+pacf(coredata(log(GoldSilver[,"gold"])), ylim = c(-1, 1), lag.max=50)
+acf(coredata(log(GoldSilver[,"silver"])), ylim = c(-1, 1), lag.max=50)
+pacf(coredata(log(GoldSilver[,"silver"])), ylim = c(-1, 1), lag.max=50)
+
+```
+Based on both the plots, both gold and silver seem to exhibit random walk.
+
+We can also perform the Dickey-Fuller and KPSS tests of stationarity for gold and silver prices. 
+We perform the same test for the first-order difference of the prices
+
+```{r}
+library(tseries)
+adf.test(coredata(log(GoldSilver[, "gold"])))
+adf.test(diff(coredata(log(GoldSilver[, "gold"]))))
+kpss.test(coredata(log(GoldSilver[, "gold"])))
+kpss.test(diff(coredata(log(GoldSilver[, "gold"]))))
+
+adf.test(coredata(log(GoldSilver[, "silver"])))
+adf.test(diff(coredata(log(GoldSilver[, "silver"]))))
+kpss.test(coredata(log(GoldSilver[, "silver"])))
+kpss.test(diff(coredata(log(GoldSilver[, "silver"]))))
+
+```
+Gold:
+The p-value of ADF is 0.92 which is larger than 0.05, so it is nonstationary.
+The p-value of KPSS is 0.01 which is smaller than 0.05, so it is nonstationary.
+
+First order differences:
+The p-value of ADF is 0.01 which is smaller than 0.05, so it is stationary.
+The p-value of KPSS is 0.1 which is smaller than 0.05, so it is stationary.
+
+Silver: 
+The p-value of ADF is 0.79 which is larger than 0.05, so it is nonstationary.
+The p-value of KPSS is 0.01 which is smaller than 0.05, so it is nonstationary.
+
+First order differences:
+The p-value of ADF is 0.01 which is smaller than 0.05, so it is stationary.
+The p-value of KPSS is 0.1 which is smaller than 0.05, so it is stationary.
+
+
+Next, let us fit the ARIMA model to gold and silver price.
+
+```{r}
+library(forecast)
+gsg.arima = auto.arima(coredata(log(GoldSilver[, "gold"])), seasonal=FALSE, stepwise=FALSE, approximation=FALSE)
+gss.arima = auto.arima(coredata(log(GoldSilver[, "silver"])), seasonal=FALSE, stepwise=FALSE, approximation=FALSE)
+
+```
+Both ARIMA models seem to be a good fit for the prices.
+
+
+To investigate whether gold and silver prices are cointegrated, we fit a linear regression model (logGoldPrice = B0 + B1×logSilverPrice + e) and plot the residuals. 
+
+```{r}
+gs.lm = lm(coredata(log(GoldSilver[,"gold"]))~coredata(log(GoldSilver[,"silver"])))
+plot(gs.lm$residuals, type="l")
+```
+The residual plot seems to be nonstationary.
+
+Next, we perform the Phillips-Ouliaris Cointegration test for gold and silver prices.
+
+```{r}
+po.test(log(coredata(GoldSilver)))
+```
+We can see that the gold and silver prices are not cointergrated.
